@@ -3,7 +3,7 @@
 #include "highgui.h"
 #include "cuda.h"
 
-int elapsedtime;
+float elapsedtime;
 
 ////////////////////////////////////CUDA Programming///////////////////////////////////////////////////////////////
 
@@ -103,7 +103,7 @@ int main( int argc, char** argv )
 		new_frame->imageData[i *3 + 1] = buffer[i * 4 + 1];
 		new_frame->imageData[i *3 + 2] = buffer[i * 4 + 2];
 		}	
-		//printf("Time taken is %d ",elapsedtime);
+		//printf("Time taken is %f ",elapsedtime);
 		
 		//////// display frame /////////
 		cvShowImage( "video", frame );
