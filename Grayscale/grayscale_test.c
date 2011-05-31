@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "gpu_grayscale.h"
-
 #include "cv.h"
 #include "highgui.h"
 
@@ -9,21 +8,22 @@ int main( int argc, char** argv )
 	IplImage  *frame, *new_frame = NULL;
 	int key, i, width, height, fps, depth;
 	unsigned char *pdata, *buffer = NULL;
+	float elapsedTime;	// Used	to measure the time taken by the filter.
 
-	// load initial avi
+	/// load initial avi ///
 	CvCapture *capture = cvCaptureFromAVI( "out.avi" );
 	if ( !capture )
 		return 1;
 
 	fps = (int)cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
 
-	// initialize video output
+	/// initialize video output ///
 	cvNamedWindow( "video", 0 );
 	cvNamedWindow( "new_video", 0 );
 
 	while ( key != 'q' ) {
 
-		// read camera image
+		/// read camera image ///
 		frame = cvQueryFrame( capture );
 		if( !frame )
 			break;
@@ -41,7 +41,7 @@ int main( int argc, char** argv )
 		}
 
 		// convert from opencv to cuda color space
-		// FIXME use depth here !
+		// FIXME use depth here ! @ Mathieu there is no need to use depth here, I am referencing memory in patterns of 3 for iplimage and 4 for buffer image.
 		pdata = (unsigned char*)frame->imageData;
 		for( i = 0; i < width * height; i++)
 		{
@@ -51,7 +51,7 @@ int main( int argc, char** argv )
 		}
 
 		// call the function from the cuda frame buffer
-		gpu_grayscale(width, height, (unsigned char*)buffer);
+		elapsedTime = gpu_grayscale(width, height, (unsigned char*)buffer);
 
 		// convert from cuda to opencv colorspace
 		pdata = (unsigned char*)new_frame->imageData;
@@ -69,6 +69,7 @@ int main( int argc, char** argv )
 		// check 'q' pressed, and refresh opencv windows
 		key = cvWaitKey( 1000 / fps );
 	}
+	printf("Time taken to execute the filter is: %f \n",elapsedTime);
 
 	///////// Free memory ///////////
 	cvReleaseCapture( &capture );

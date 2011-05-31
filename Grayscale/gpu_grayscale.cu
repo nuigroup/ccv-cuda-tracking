@@ -1,7 +1,6 @@
 #include "cuda.h"
 
-float elapsedtime;
-
+/////////////// Grayscale Cuda Fucntion ////////////////////
 __global__ void convert(int width, int height, uchar4 *gpu_in)
 {
 	
@@ -20,10 +19,10 @@ __global__ void convert(int width, int height, uchar4 *gpu_in)
 	
 }
 ///////////////// CUDA function call wrapper /////////////////
-void gpu_grayscale(int width, int height, unsigned char *in)
+float gpu_grayscale(int width, int height, unsigned char *in)
 {
 	uchar4 *gpu_in;
-
+	float elapsedtime;
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
@@ -43,8 +42,10 @@ void gpu_grayscale(int width, int height, unsigned char *in)
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedtime,start,stop);
+	cudaFree(gpu_in);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
+	return elapsedtime;
 	
 }
 
