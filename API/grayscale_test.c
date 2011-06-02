@@ -45,6 +45,8 @@ int main( int argc, char** argv )
 				GPU_ERROR("Unable to initialize GPU context");
 				break;
 			}
+
+			new_frame = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, 4);
 		}
 
 		//////////// Setting up context buffer ///////////////
@@ -69,11 +71,13 @@ int main( int argc, char** argv )
 			break;
 		}
 
-		cvSetData( new_frame, output_buffer, (frame->width * frame->nChannels));
+		cvSetData( new_frame, output_buffer, (frame->width * 4));
 
 		// display the source video and the result
 		cvShowImage( "video", frame );
 		cvShowImage( "new_video", new_frame );
+
+		cvWaitKey(10);
 
 	}
 
