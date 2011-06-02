@@ -62,7 +62,7 @@ void cuda_set_input(gpu_context_t *ctx, unsigned char *idata)
 	}
 
 	cudaMemcpy(ctx->output_buffer, ctx->gpu_buffer, size * 4, cudaMemcpyHostToDevice);
-	checkCudaError();
+	last_error = checkCudaError();
 }
 
 /////////////////////////////////////////////////////////////////////////
