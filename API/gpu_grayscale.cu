@@ -1,15 +1,12 @@
-#ifndef _CUDA_H
-#define _CUDA_H
-#include "cuda.h"
-#endif
 
+#include "cuda.h"
 //#ifndef _API_H
 //#define _API_H
 #include "api.h"
 //#endif
 
 /////////////// Grayscale Cuda Fucntion ////////////////////
-__global__ void convert(int width, int height, uchar4 *gpu_in)
+__global__ void convert(int width, int height, unsigned char *gpu_in)
 {
 	
 	int tx = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -18,42 +15,36 @@ __global__ void convert(int width, int height, uchar4 *gpu_in)
 
 	if(offset < width * height)
 	{	
-		float color = 0.3 * (gpu_in[offset].x) + 0.6 * (gpu_in[offset].y) + 0.1 * (gpu_in[offset].z);
-		gpu_in[offset].x = color;
-		gpu_in[offset].y = color;
-		gpu_in[offset].z = color;
-		gpu_in[offset].w = 0;
+		float color = 0.3 * (gpu_in[offset * 4 + 0]) + 0.6 * (gpu_in[offset * 4 + 1]) + 0.1 * (gpu_in[offset * 4 + 2]);
+		gpu_in[offset * 4 + 0] = color;
+		gpu_in[offset * 4 + 1] = color;
+		gpu_in[offset * 4 + 2] = color;
+		gpu_in[offset * 4 + 3] = 0;
 	}	
 	
 }
 ///////////////// CUDA function call wrapper /////////////////
-gpu_error gpu_grayscale(int width, int height, unsigned char *in)
+gpu_error_t gpu_grayscale(gpu_context *ctx)
 {
-	uchar4 *gpu_in;
+	
 	float elapsedtime;
 	cudaEvent_t start, stop;
-	gpu_error error = No_error;
+	gpu_error_t error = No_error;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 	cudaEventRecord(start,0);
 	
 	////////////////////////// Time consuming Task //////////////////////////////////	
-	cudaMalloc((void **)&gpu_in, (width * height * 4 * sizeof(unsigned char)));
-	cudaMemcpy(gpu_in, in, (width * height * 4 * sizeof(unsigned char)), cudaMemcpyHostToDevice);
-	error = checkCudaError();
-
+	
 	dim3 grid(18,18);
 	dim3 block(16,16);
-	convert<<<grid,block>>>(width, height, gpu_in);
-
-	error = checkCudaError();
-	cudaMemcpy( in, gpu_in, (width * height * 4 * sizeof(unsigned char)), cudaMemcpyDeviceToHost);
+	convert<<<grid,block>>>( ctx->width, ctx->height, ctx->gpu_buffer);
+	
 	/////////////////////////////////////////////////////////////////////////////////
 
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedtime,start,stop);
-	cudaFree(gpu_in);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	return error;

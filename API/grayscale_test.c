@@ -7,7 +7,7 @@
 int main( int argc, char** argv )
 {
 	IplImage  *frame, *new_frame = NULL;
-	unsigned char *output_buffer = NULL;
+	//unsigned char *output_buffer = NULL;
 	int fps;
 	float elapsedTime;	// Used	to measure the time taken by the filter.
 
@@ -37,18 +37,18 @@ int main( int argc, char** argv )
 		if( !frame )
 			break;
 
-		if ( output_buffer == NULL ) {
+		if ( new_frame == NULL ) {
 			
 			assert(frame->nChannels == 3);
-			if (gpu_context_init( ctx, frame->height, frame->width, frame->nChannels, 2) != No_error)
+			if ( gpu_context_init( ctx, frame->height, frame->width, frame->nChannels, 2) != No_error )
 			{
 				fprintf(stderr,"Unable to initialize GPU context");
 				break;
 			}
 			
-			output_buffer = (unsigned char *) malloc((frame->width)*(frame->height)*(frame->nChannels));
+			//output_buffer = (unsigned char *) malloc((frame->width)*(frame->height)*(frame->nChannels));
 			new_frame = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, frame->nChannels);
-			cvSetData( new_frame, output_buffer, (frame->width * frame->nChannels));
+			cvSetData( new_frame, ctx->output_buffer, (frame->width * frame->nChannels));
 		}
 
 		//////////// Setting up context buffer ///////////////
@@ -60,19 +60,19 @@ int main( int argc, char** argv )
 
 		////////////////////////// CUDA calls /////////////////////////////
 
-		if( gpu_grayscale(ctx->width, ctx->height, (unsigned char*)ctx->buffer) != No_error )
+		if( gpu_grayscale(ctx) != No_error )
 		{
 			fprintf(stderr,"Unable to convert to grayscale");
 			break;
 		}
 		
 		/////////// Setting up output buffer ////////////////
-		if(gpu_get_input( ctx, output_buffer) != No_error)
+		if(gpu_get_input( ctx ) != No_error)
 		{
 			fprintf(stderr, "Unable to set context buffer");
 			break;
 		}
-		cvSetData( new_frame, output_buffer, (frame->width * frame->nChannels));		
+		cvSetData( new_frame, ctx->output_buffer, (frame->width * frame->nChannels));		
 
 		// display the source video and the result
 		cvShowImage( "video", frame );
@@ -81,6 +81,7 @@ int main( int argc, char** argv )
 	}
 	
 	///////// Free memory ///////////
+	gpu_context_free( ctx );
 	cvReleaseCapture( &capture );
 	cvDestroyWindow( "video" );
 	cvDestroyWindow( "new_video" );
