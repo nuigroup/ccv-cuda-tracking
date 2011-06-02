@@ -4,12 +4,14 @@
 #include "highgui.h"
 #include "api.h"
 
+#define GPU_ERROR(x) fprintf(stderr, "GPU: " #x "(%s)\n", gpu_error());
+
 int main( int argc, char** argv )
 {
 	IplImage  *frame, *new_frame = NULL;
-	//unsigned char *output_buffer = NULL;
+	unsigned char *output_buffer;
+	gpu_context_t *ctx = NULL;
 	int fps;
-	float elapsedTime;	// Used	to measure the time taken by the filter.
 
 	/// load initial avi ///
 	CvCapture *capture = cvCaptureFromAVI( "out.avi" );
@@ -22,64 +24,59 @@ int main( int argc, char** argv )
 	cvNamedWindow( "video", 0 );
 	cvNamedWindow( "new_video", 0 );
 
-	gpu_context *ctx;
-	
-	if(gpu_context_create(ctx) != No_error)
+	if ( gpu_context_create(&ctx) != GPU_OK )
 	{
-		fprintf( stderr,"Unable to create GPU context");
+		GPU_ERROR("Unable to create GPU context");
 		return 0;
 	}
 
-	while (!NULL) 
+	while (!NULL)
 	{
 		/// read camera image ///
 		frame = cvQueryFrame( capture );
 		if( !frame )
 			break;
 
-		if ( new_frame == NULL ) {
-			
+		if ( new_frame == NULL )
+		{
 			assert(frame->nChannels == 3);
-			if ( gpu_context_init( ctx, frame->height, frame->width, frame->nChannels, 2) != No_error )
+			if ( gpu_context_init( ctx, frame->height, frame->width, frame->nChannels, GPU_MEMORY_HOST) != GPU_OK )
 			{
-				fprintf(stderr,"Unable to initialize GPU context");
+				GPU_ERROR("Unable to initialize GPU context");
 				break;
 			}
-			
-			//output_buffer = (unsigned char *) malloc((frame->width)*(frame->height)*(frame->nChannels));
-			new_frame = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, frame->nChannels);
-			cvSetData( new_frame, ctx->output_buffer, (frame->width * frame->nChannels));
 		}
 
 		//////////// Setting up context buffer ///////////////
-		if(gpu_set_input( ctx, (unsigned char *)frame->imageData) != No_error)
+		if(gpu_set_input( ctx, (unsigned char *)frame->imageData) != GPU_OK)
 		{
-			fprintf(stderr,"Unable to set context buffer");
+			GPU_ERROR("Unable to set context buffer");
 			break;
 		}
 
 		////////////////////////// CUDA calls /////////////////////////////
 
-		if( gpu_grayscale(ctx) != No_error )
+		if (gpu_grayscale(ctx) != GPU_OK)
 		{
-			fprintf(stderr,"Unable to convert to grayscale");
+			GPU_ERROR("Unable to convert to grayscale");
 			break;
 		}
-		
+
 		/////////// Setting up output buffer ////////////////
-		if(gpu_get_input( ctx ) != No_error)
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
 		{
-			fprintf(stderr, "Unable to set context buffer");
+			GPU_ERROR("Unable to get output buffer");
 			break;
 		}
-		cvSetData( new_frame, ctx->output_buffer, (frame->width * frame->nChannels));		
+
+		cvSetData( new_frame, output_buffer, (frame->width * frame->nChannels));
 
 		// display the source video and the result
 		cvShowImage( "video", frame );
 		cvShowImage( "new_video", new_frame );
 
 	}
-	
+
 	///////// Free memory ///////////
 	gpu_context_free( ctx );
 	cvReleaseCapture( &capture );

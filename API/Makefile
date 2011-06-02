@@ -1,17 +1,26 @@
 .PHONY: grayscale
 
-CUDA_LIBS=/usr/local/cuda/lib
+# 64 bits platform ?
 LBITS := $(shell getconf LONG_BIT)
-ifeq ($(LBITS),64)
-	CUDA_LIBS=/usr/local/cuda/lib64
-endif
 
-CUDA_FLAGS=-L$(CUDA_LIBS) -lcudart
-OPENCV_FLAGS=$$(pkg-config --cflags --libs opencv)
+# Cuda libs
+CUDA_PATH := /usr/local/cuda
+CUDA_LIBS := $(CUDA_PATH)/lib
+NVCC := $(CUDA_PATH)/bin/nvcc
+ifeq ($(LBITS),64)
+	CUDA_LIBS := /usr/local/cuda/lib64
+endif
+CUDA_FLAGS := -L$(CUDA_LIBS) -lcudart
+
+# OpenCV
+OPENCV_FLAGS := $$(pkg-config --cflags --libs opencv)
+
+# CXX Flags
+CXX_FLAGS := -ggdb -Wall
 
 grayscale:
-	nvcc --cuda gpu_grayscale.cu api.cu
-	g++ $(OPENCV_FLAGS) $(CUDA_FLAGS) -lcudart grayscale_test.c api.cu.cpp  gpu_grayscale.cu.cpp -o grayscale_test
+	$(NVCC) --cuda gpu_grayscale.cu api.cu
+	$(CXX) $(CXX_FLAGS) $(OPENCV_FLAGS) $(CUDA_FLAGS) -lcudart grayscale_test.c api.cu.cpp  gpu_grayscale.cu.cpp -o grayscale_test
 
 all: grayscale
 
