@@ -19,7 +19,7 @@ OPENCV_FLAGS := $$(pkg-config --cflags --libs opencv)
 CXX_FLAGS := -ggdb -Wall
 
 grayscale:
-	$(NVCC) --cuda Grayscale/gpu_grayscale.cu Threshold/gpu_threshold.cu api.cu
+	$(NVCC) --cuda -g -G Grayscale/gpu_grayscale.cu Threshold/gpu_threshold.cu api.cu
 	$(CXX) $(CXX_FLAGS) $(OPENCV_FLAGS) $(CUDA_FLAGS) -lcudart grayscale_test.c api.cu.cpp  gpu_grayscale.cu.cpp gpu_threshold.cu.cpp -o grayscale_test
 
 all: grayscale

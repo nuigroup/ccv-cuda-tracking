@@ -19,8 +19,8 @@ typedef struct
 	int width;
 	int nchannels;
 	int size ;
-	unsigned char *output_buffer_4;	
-	unsigned char *gpu_buffer_4;
+	unsigned char *output_buffer_4;		// The only usage of output_buffer_4 is that it provides gpu_buffer_4 in initial stage.
+	unsigned char *gpu_buffer_4;		// The only usage of gpu_buffer_4 is to calculate grayscale. Grayscale image is then recieved from output_buffer_1.	
 	unsigned char *output_buffer_1;
 	unsigned char *gpu_buffer_1;
 	gpu_context_memory_t mem_flag;

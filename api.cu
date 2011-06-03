@@ -146,7 +146,7 @@ gpu_error_t gpu_context_init(gpu_context_t *ctx, int host_height, int host_width
 	if(last_error == GPU_OK)
 	{
 		cudaMalloc( (void **)&ctx->gpu_buffer_1, (ctx->height * ctx->width * sizeof(unsigned char)) );
-		last_error == checkCudaError();
+		last_error = checkCudaError();
 	}
 	if(last_error == GPU_OK)
 	{
@@ -198,15 +198,7 @@ gpu_error_t gpu_context_init(gpu_context_t *ctx, int host_height, int host_width
 gpu_error_t gpu_set_input( gpu_context_t *ctx, unsigned char *idata)
 {
 	assert( ctx || idata );
-
 	cuda_set_input(ctx, idata);
-	/*for(int i=0;i < (ctx->width)*(ctx->height);i++)
-	{
-		ctx->output_buffer[i * 4 + 0] = idata[i * 3 + 0];
-		ctx->output_buffer[i * 4 + 1] = idata[i * 3 + 1];
-		ctx->output_buffer[i * 4 + 2] = idata[i * 3 + 2];
-	}*/
-
 	return GPU_OK;
 }
 
@@ -216,21 +208,11 @@ gpu_error_t gpu_get_output(gpu_context_t *ctx, unsigned char **output)
 	assert( ctx );
 	assert( output != NULL );
 
-	// copy back the gpu buffer to host buffer
-	if((ctx->nchannels == 3) || (ctx->nchannels == 4) )
-	{
-		cudaMemcpy(ctx->output_buffer_4, ctx->gpu_buffer_4, ctx->width * ctx->height * 4, cudaMemcpyDeviceToHost);
-		last_error = checkCudaError();
-		if ( last_error == GPU_OK )
-			*output = ctx->output_buffer_4;
-	}
-	else if(ctx->nchannels == 1)
-	{
-		cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height * sizeof(unsigned char), cudaMemcpyDeviceToHost);
-		last_error = checkCudaError();
-		if ( last_error == GPU_OK )
-			*output = ctx->output_buffer_1;
-	}
+	cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost);
+	last_error = checkCudaError();
+	if ( last_error == GPU_OK )
+		*output = ctx->output_buffer_1;
+	
 
 	return last_error;
 }
