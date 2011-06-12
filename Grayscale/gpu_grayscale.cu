@@ -5,6 +5,10 @@
 #include "../api.h"
 //#endif
 
+inline int iDivUp(int a, int b){
+    return (a % b != 0) ? (a / b + 1) : (a / b);
+}
+
 /////////////// Grayscale Cuda Fucntion ////////////////////
 __global__ void convert(int width, int height, unsigned char *gpu_in_1, unsigned char *gpu_in_4)
 {
@@ -47,11 +51,13 @@ gpu_error_t gpu_grayscale(gpu_context_t *ctx)
 
 	////////////////////////// Time consuming Task //////////////////////////////////	
 
-	dim3 grid(18,18);
-	dim3 block(16,16);
+	dim3 block(16,15);
+	dim3 grid(iDivUp(ctx->width,block.x),iDivUp(ctx->height,block.y));
 	convert<<<grid,block>>>( ctx->width, ctx->height, ctx->gpu_buffer_1, ctx->gpu_buffer_4);
 	
 	/////////////////////////////////////////////////////////////////////////////////
+
+	cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost);
 
 	//cudaEventRecord(stop,0);
 	//cudaEventSynchronize(stop);

@@ -40,6 +40,8 @@ gpu_error_t gpu_threshold( gpu_context_t *ctx, int th_value)
 
 	/////////////////////////////////////////////////////////////////////////////////
 
+	cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost);
+
 	//cudaEventRecord(stop,0);
 	//cudaEventSynchronize(stop);
 	//cudaEventElapsedTime(&elapsedtime,start,stop);

@@ -28,7 +28,8 @@
 gpu_error_t last_error = GPU_OK;
 cudaError_t last_cuda_error = cudaSuccess;
 
-//////////////////// Necessary Cuda calls ///////////////////////////////
+///////////////////////////////// Necessary Cuda calls /////////////////////////////////////////
+
 /////////////// This call copies data from global memory ///////////////
 void cuda_set_input(gpu_context_t *ctx, unsigned char *idata)
 {
@@ -75,7 +76,6 @@ void cuda_set_input(gpu_context_t *ctx, unsigned char *idata)
 
 	checkCudaError();
 }
-
 /////////////////////////////////////////////////////////////////////////
 
 ////// This code will return error occured on GPU in a string format ////
@@ -208,7 +208,7 @@ gpu_error_t gpu_get_output(gpu_context_t *ctx, unsigned char **output)
 	assert( ctx );
 	assert( output != NULL );
 
-	cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost);
+	//cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost);
 	last_error = checkCudaError();
 	if ( last_error == GPU_OK )
 		*output = ctx->output_buffer_1;
