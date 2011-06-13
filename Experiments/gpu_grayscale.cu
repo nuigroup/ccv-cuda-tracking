@@ -5,7 +5,7 @@ texture<uchar4, 2, cudaReadModeElementType> texSrc;
 
 ////////////////////////////////////CUDA Programming///////////////////////////////////////////////////////////////
 
-__global__ void convert(unsigned char *in_1)
+__global__ void convert(unsigned char *iin_1)
 {
 
 	int tx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -19,7 +19,9 @@ __global__ void convert(unsigned char *in_1)
 
 	uchar4 temp;
 	temp = tex2D(texSrc,x,y);
-	//in_1[offset] = temp.x;
+	float color = 0.3 * temp.x + 0.6 * temp.y + 0.1 * temp.z ;
+
+	iin_1[offset] = color;
     
 	/*
 	int tx = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -75,6 +77,9 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 {
 	//uchar4 *gpu_in;
 
+	unsigned char *iin_1;
+	cudaMalloc((void **)&iin_1, (240*320*sizeof(unsigned char)));
+	
 	cudaArray *src;
     cudaChannelFormatDesc floatTex = cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
 
@@ -93,7 +98,7 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 
 	dim3 grid(18,18);
 	dim3 block(16,16);
-	convert<<<grid,block>>>(in_1);
+	convert<<<grid,block>>>(iin_1);
 
 	//cudaMemcpy( in, gpu_in, (240*320*4*sizeof(unsigned char)), cudaMemcpyDeviceToHost);
 	/////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +108,8 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 	cudaEventElapsedTime(&elapsedtime,start,stop);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
-
+	cudaMemcpy( in_1, iin_1, (240*320*sizeof(unsigned char)), cudaMemcpyDeviceToHost);
+	
 	return elapsedtime;	
 }
 
