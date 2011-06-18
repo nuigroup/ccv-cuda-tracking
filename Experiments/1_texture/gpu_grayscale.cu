@@ -14,9 +14,8 @@ __global__ void convert(unsigned char *iin_1)
     const float  x = (float)tx + 0.5f;
     const float  y = (float)ty + 0.5f;
 
-	if(offset < 320*240)
+	if(tx >= 240 || ty >= 320)
         return;
-
 	uchar4 temp;
 	temp = tex2D(texSrc,x,y);
 	float color = 0.3 * temp.x + 0.6 * temp.y + 0.1 * temp.z ;
@@ -82,9 +81,9 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 	
 	cudaArray *src;
     cudaChannelFormatDesc floatTex = cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
-
+	//cudaChannelFormatDesc floatTex = cudaCreateChannelDesc<unsigned char>();
     cudaMallocArray(&src, &floatTex, 240, 320);
-    cudaMemcpyToArray(src, 0, 0, in, 4 * 240 * 320, cudaMemcpyHostToDevice);
+    cudaMemcpyToArray(src, 0, 0, in, 240 * 320 * 4, cudaMemcpyHostToDevice);
     cudaBindTextureToArray(texSrc, src, floatTex);
 
 	cudaEvent_t start, stop;
@@ -96,8 +95,10 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 	//cudaMalloc((void **)&gpu_in, (240*320*4*sizeof(unsigned char)));	
 	//cudaMemcpy(gpu_in, in, (240*320*4*sizeof(unsigned char)), cudaMemcpyHostToDevice);
 
-	dim3 grid(18,18);
-	dim3 block(16,16);
+	
+
+	dim3 grid(15,22);
+	dim3 block(16,15);
 	convert<<<grid,block>>>(iin_1);
 
 	//cudaMemcpy( in, gpu_in, (240*320*4*sizeof(unsigned char)), cudaMemcpyDeviceToHost);
@@ -109,6 +110,7 @@ float tograyscale(unsigned char *in, unsigned char * in_1)
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	cudaMemcpy( in_1, iin_1, (240*320*sizeof(unsigned char)), cudaMemcpyDeviceToHost);
+	cudaUnbindTexture(texSrc);
 	
 	return elapsedtime;	
 }
