@@ -2,7 +2,7 @@
 	The current approach uses only texture memory. Performance is way better than global memory.
 	Future release might contain share memory embedded in it. :D
 */
-#include "../api.h"
+#include "../API/api.h"
 #include "cuda.h"
 
 #define MAD(a, b, c) ( __mul24((a), (b)) + (c) )	//Responsible for speeding up the process of multiplicaton
@@ -140,12 +140,11 @@ gpu_error_t gpu_blur( gpu_context_t *ctx , int KERNEL_RADIUS)
     cudaMallocArray(&src, &floatTex, imageW, imageH);
     
     unsigned char *d_Output;
-    cudaMalloc((void **)&d_Output, imageW * imageH );
-    
+    cudaMalloc((void **)&d_Output, imageW * imageH );   
     
 	error = checkCudaError();
 	
-	/////////// calculating kernel ///////////
+	////////////// calculating kernel //////////////
 	float sum = 0;
     for(int i = 0; i < KERNEL_LENGTH; i++)
     {
@@ -156,7 +155,7 @@ gpu_error_t gpu_blur( gpu_context_t *ctx , int KERNEL_RADIUS)
     for(int i = 0; i < KERNEL_LENGTH; i++)
         tempKernel[i] /= sum;            
 	cudaMemcpyToSymbol(Kernel, tempKernel, KERNEL_LENGTH * sizeof(float));       
-	/////////////////////////////////////////
+	////////////////////////////////////////////////
 	
     cudaMemcpyToArray(src, 0, 0, in, imageW * imageH, cudaMemcpyHostToDevice);
     convolutionRowsGPU( d_Output, src, imageW, imageH, KERNEL_RADIUS, KERNEL_LENGTH);

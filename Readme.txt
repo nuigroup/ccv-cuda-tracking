@@ -1,0 +1,3 @@
+@mathieu: Can you please check the output of background filter, It is not as it should be. I have included my bgFilter experiment 
+in the experiments folder. The output the of experiment is entirely different from the one included in main branch, although
+the code for both of htem is the same......

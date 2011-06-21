@@ -2,7 +2,7 @@
 #include "cuda.h"
 //#ifndef _API_H
 //#define _API_H
-#include "../api.h"
+#include "../API/api.h"
 //#endif
 
 inline int iDivUp(int a, int b){
@@ -14,22 +14,22 @@ __global__ void convert(int width, int height, unsigned char *gpu_in_1, unsigned
 {
 	int tx = threadIdx.x + (blockIdx.x * blockDim.x);
 	int ty = threadIdx.y + (blockIdx.y * blockDim.y);
-	int offset = tx + ty * blockDim.x*gridDim.x;
+	int offset = tx + ty * blockDim.x * gridDim.x;
 	//int th_value = 40;
 
 	if(offset < width * height)
 	{
 		float color = 0.3 * (gpu_in_4[offset * 4 + 0]) + 0.6 * (gpu_in_4[offset * 4 + 1]) + 0.1 * (gpu_in_4[offset * 4 + 2]);
-		gpu_in_4[offset * 4 + 0] = color;
-		gpu_in_4[offset * 4 + 1] = color;
-		gpu_in_4[offset * 4 + 2] = color;
-		gpu_in_4[offset * 4 + 3] = 0;
+		//gpu_in_4[offset * 4 + 0] = color;
+		//gpu_in_4[offset * 4 + 1] = color;
+		//gpu_in_4[offset * 4 + 2] = color;
+		//gpu_in_4[offset * 4 + 3] = 0;
 		//buffer[offset] = color;			// Dont know if it will work ---> It cant be done, It doesnt work
 		//if(color < th_value)		
 		//	gpu_in_1[offset] = 0;			// There is really no need to call this function again for threshold when
 		//else						// all we have to do is copy from ouput->buffer to gpu->buffer and threshold.
 		//	gpu_in_1[offset] = 255;			// I will be calcilating threshold here only and strothe result in gpu_in_1.
-		gpu_in_1[offset] = color;
+		gpu_in_1[offset] = (unsigned char)color;
 								//	After the grayscale I will copy th e result to gpu_buffer_1 in channel format.
 								//	So any other filter that has to be applied will be applied directly to gpu_buffer_1
 								//	without the usage of gpu_set_input first.And so on after that there is really no need 
