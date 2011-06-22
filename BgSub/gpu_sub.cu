@@ -7,7 +7,6 @@
 #include "../API/api.h"
 #include "assert.h"
 
-
 // gpu_in is 8bit input image. StaticBg is the background to be subtracted. outTemp is for output.
 // It is the duty of the programmer to contantly change staticBg for dynamic filtering.
 __global__ void subtract( unsigned char *gpu_buffer_1, unsigned char *staticBg)
@@ -19,7 +18,7 @@ __global__ void subtract( unsigned char *gpu_buffer_1, unsigned char *staticBg)
 	if(ix >= 240 || iy >= 320)
         return;
         
-	gpu_buffer_1[offset] = gpu_buffer_1[offset] - staticBg[offset];
+	gpu_buffer_1[offset] = ( (gpu_buffer_1[offset] - staticBg[offset]) < 0 ? 0 : (gpu_buffer_1[offset] - staticBg[offset]) );
 }
 
 gpu_error_t gpu_sub( gpu_context_t *ctx, unsigned char *staticBg)
