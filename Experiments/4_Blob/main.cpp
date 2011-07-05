@@ -6,9 +6,10 @@
 #include "gpu_blob.h"
 #include "threshold.h"
 
+
 int main( int argc, char** argv )
 {
-	IplImage  *frame, *new_frame;
+	IplImage  *frame, *new_frame, *new_frame_1;
 	int key, i;
 	unsigned char *pdata, *buffer;
 	float elapsedtime;
@@ -22,11 +23,13 @@ int main( int argc, char** argv )
 	
 	/* display video */
 	cvNamedWindow( "video", 0 );
-	cvNamedWindow( "new_video", 0 );
+	cvNamedWindow( "Labels", 0 );
+	cvNamedWindow( "Threshold", 0 );
 
 	//cudaHostAlloc( (void **) &buffer, sizeof(unsigned char) * 240 * 320 * 4, cudaHostAllocDefault);
 	buffer = new unsigned char[240*320*4]; 
 	new_frame = cvCreateImage(cvSize(240,320),IPL_DEPTH_8U,1);
+	new_frame_1 = cvCreateImage(cvSize(240,320),IPL_DEPTH_8U,1);
 	
 	while( key != 'q' ) {
 		//////// get a frame //////////
@@ -53,13 +56,14 @@ int main( int argc, char** argv )
 
 		gpu_threshold((unsigned char *)new_frame->imageData);
 
-		elapsedtime = gpu_DetectBlob((unsigned char *)new_frame->imageData);
+		elapsedtime = gpu_DetectBlob( (unsigned char *)new_frame->imageData, (unsigned char *)new_frame_1->imageData);
 		
-		printf("Time taken is %f ",elapsedtime);
-		
+		//printf("Time taken is %f ",elapsedtime);
+				
 		//////// display frame /////////
 		cvShowImage( "video", frame );
-		cvShowImage( "new_video", new_frame );
+		cvShowImage( "Labels", new_frame_1 );
+		cvShowImage( "Threshold", new_frame );
 		
 		/// quit if user press 'q' /////
 		key = cvWaitKey( 10 );
