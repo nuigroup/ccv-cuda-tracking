@@ -170,6 +170,9 @@ gpu_error_t gpu_blur( gpu_context_t *ctx , int KERNEL_RADIUS)
 	cudaMemcpy(in, d_Output, imageW * imageH, cudaMemcpyDeviceToHost);
 	cudaMemcpy( ctx->gpu_buffer_1, d_Output, imageW * imageH, cudaMemcpyDeviceToDevice);	// This is needed so that next filter is able to use gpu_buffer_1
 	error = checkCudaError();
+
+	cudaFree(d_Output);
+	cudaFreeArray(src);
 	return error;
 	
 }

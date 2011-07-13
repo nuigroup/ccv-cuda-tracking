@@ -42,5 +42,6 @@ gpu_error_t gpu_sub( gpu_context_t *ctx, unsigned char *staticBg)
 	
 	cudaMemcpy( ctx->output_buffer_1, ctx->gpu_buffer_1, 240 * 320, cudaMemcpyDeviceToHost);
 	error = CHECK_CUDA_ERROR();
+	cudaFree(temp);
 	return error;
 }

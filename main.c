@@ -3,7 +3,7 @@
 #include "GaussBlurTex/gpu_blur_tex.h"
 #include "BgSub/gpu_sub.h"
 #include "Amplify/gpu_amplify.h"
-
+#include "Blobs/gpu_blob.h"
 #include <stdio.h>
 #include "cv.h"
 #include "highgui.h"
@@ -16,6 +16,7 @@ int main( int argc, char** argv )
 	IplImage  *new_frame_2 = NULL;
 	IplImage  *new_frame_3 = NULL;
 	IplImage  *new_frame_4 = NULL;
+	IplImage  *new_frame_5 = NULL;
 	unsigned char *output_buffer, *staticBg;
 	gpu_context_t *ctx = NULL;
 	bgMode mode = STATIC;
@@ -50,6 +51,9 @@ int main( int argc, char** argv )
 	cvNamedWindow( "Threshold", 0 );
 	cvMoveWindow( "Threshold", 300, 400);
 
+	cvNamedWindow( "Blobs", 0 );
+	cvMoveWindow( "Blobs", 600, 400);
+
 	if ( gpu_context_create(&ctx) != GPU_OK )
 	{
 		GPU_ERROR("Unable to create GPU context");
@@ -78,6 +82,7 @@ int main( int argc, char** argv )
 			new_frame_2 = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, 1);
 			new_frame_3 = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, 1);
 			new_frame_4 = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, 1);
+			new_frame_5 = cvCreateImageHeader(cvSize(frame->width,frame->height), IPL_DEPTH_8U, 1);
 		}
 		
 		/////////////////////// Setting up context buffer /////////////////////////
@@ -96,7 +101,7 @@ int main( int argc, char** argv )
 		}
     	if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
 		{
-			GPU_ERROR("Unable to get output buffer");
+			GPU_ERROR("Unable to get output buffer after grayscale");
 			break;
 		}
 		cvSetData( new_frame, output_buffer, frame->width);
@@ -114,29 +119,43 @@ int main( int argc, char** argv )
 		/* Background subtraction */
 		if(gpu_sub( ctx, staticBg) != GPU_OK) 
 		{
-			GPU_ERROR("unable to remove background");
+			GPU_ERROR("unable to remove background ");
 		}
 
-		gpu_get_output(ctx, &output_buffer);
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
+		{
+			GPU_ERROR("Unable to get output buffer after Bg");
+			break;
+		}
 		cvSetData( new_frame_1, output_buffer, frame->width);
 		cvShowImage( "BgFilter", new_frame_1 );
 
 	    //////////////////////// GPU blurring Call /////////////////////////////
-		if(gpu_blur( ctx, 5) != GPU_OK)
+		if(gpu_blur( ctx, 3) != GPU_OK)
 		{
 			GPU_ERROR("Unable to blur the image");
 		}
-		gpu_get_output(ctx, &output_buffer);
+
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
+		{
+			GPU_ERROR("Unable to get output buffer after Blur");
+			break;
+		}
 		cvSetData( new_frame_2, output_buffer, frame->width);
 		cvShowImage( "Blurring", new_frame_2 );
 
 		////////////////////////// GPU Amplify call ////////////////////////////
 
-		if(gpu_amplify( ctx, 1.2f) != GPU_OK)
+		if(gpu_amplify( ctx, 1.5f) != GPU_OK)
 		{
 			GPU_ERROR("Unable to threshold");
 		}
-		gpu_get_output( ctx, &output_buffer);
+
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
+		{
+			GPU_ERROR("Unable to get output buffer after amp");
+			break;
+		}
 		cvSetData( new_frame_3, output_buffer, frame->width);
 		cvShowImage( "Amplify", new_frame_3 );
 
@@ -147,9 +166,35 @@ int main( int argc, char** argv )
 			GPU_ERROR("Unable to threshold");
 		}
 
-		gpu_get_output(ctx, &output_buffer);
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
+		{
+			GPU_ERROR("Unable to get output buffer threshold");
+			break;
+		}
 		cvSetData( new_frame_4, output_buffer, frame->width);
 		cvShowImage( "Threshold", new_frame_4 );
+
+		/////////////////////// GPU Blob Detection /////////////////////////////
+/*
+		if( gpu_DetectBlob(ctx) != GPU_OK)
+		{
+			GPU_ERROR("Unable to detect blobs");
+			break;
+		}
+		
+		if (gpu_get_output(ctx, &output_buffer) != GPU_OK)
+		{
+			GPU_ERROR("Unable to get output buffer after blobs");
+			break;
+		}
+		cvSetData( new_frame_5, output_buffer, frame->width);
+		cvShowImage( "Blobs", new_frame_5 );
+
+
+*/
+		/////////////////////////////////////////// //////////////////////////
+
+		
 
 		// display the source video and the result
 		cvShowImage( "video", frame );
