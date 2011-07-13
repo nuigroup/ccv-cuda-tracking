@@ -6,7 +6,6 @@
 #include "gpu_blob.h"
 #include "threshold.h"
 
-
 int main( int argc, char** argv )
 {
 	IplImage  *frame, *new_frame, *new_frame_1;
@@ -23,8 +22,11 @@ int main( int argc, char** argv )
 	
 	/* display video */
 	cvNamedWindow( "video", 0 );
+	cvMoveWindow( "video", 0, 50);
 	cvNamedWindow( "Labels", 0 );
+	cvMoveWindow( "Labels", 300, 50);
 	cvNamedWindow( "Threshold", 0 );
+	cvMoveWindow( "Threshold", 640, 50);
 
 	//cudaHostAlloc( (void **) &buffer, sizeof(unsigned char) * 240 * 320 * 4, cudaHostAllocDefault);
 	buffer = new unsigned char[240*320*4]; 
@@ -58,7 +60,7 @@ int main( int argc, char** argv )
 
 		elapsedtime = gpu_DetectBlob( (unsigned char *)new_frame->imageData, (unsigned char *)new_frame_1->imageData);
 		
-		//printf("Time taken is %f ",elapsedtime);
+		printf("Time taken is %f ",elapsedtime);
 				
 		//////// display frame /////////
 		cvShowImage( "video", frame );

@@ -51,11 +51,11 @@ __device__ void unionF(int* buf, unsigned char *buf_uchar, unsigned char seg1, u
 	
 		if(newReg1 > newReg2) {			
 			atomicMin(buf+newReg1, newReg2);		
-			buf_uchar[newReg1] = min( buf_uchar[newReg1], newReg2);		
+			//buf_uchar[newReg1] = min( buf_uchar[newReg1], newReg2);		
 			changed[0] = 1;			
 		} else if(newReg2 > newReg1) {		
 			atomicMin(buf+newReg2, newReg1);	
-			buf_uchar[newReg2] = min( buf_uchar[newReg2], newReg2);
+			//buf_uchar[newReg2] = min( buf_uchar[newReg2], newReg2);
 			changed[0] = 1;
 		}			
 	} 	
@@ -235,166 +235,6 @@ __global__ void cclSharedLabelling( unsigned char *gpu_in, int *gpu_labels, unsi
 
 }
 
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*													  Merging Blobs at Borders 															   */
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__global__ void mergeBlobAtBorders( int *gpu_labels, unsigned char *gpu_labels_uchar, const int tileDim, const int pitch)
-{
-	// These specify the 3 x 4 matrices. Where each matrix element is a combination of 4 x 4 tiles.
-	int tileX = threadIdx.x + blockIdx.x * blockDim.x;	
-	int tileY = threadIdx.y + blockIdx.y * blockDim.y;
-
-	//the number of times each thread has to be used to process one border of the tile
-	int threadIterations = tileDim / blockDim.z;
-
-	//dimensions of the tile on the next level of the merging scheme
-	int nextTileDim = tileDim * blockDim.x;
-
-	unsigned char seg;
-	int offset;
-	
-	//shared variable that is set to 1 if an equivalence tree was changed
-	__shared__ int sChanged[1];
-
-	while(!NULL)
-	{
-	
-		//reset the check variable
-		if(threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0)
-		{
-			sChanged[0] = 0;			
-		}
-		__syncthreads();
-
-		//Processing the horizontal border...
-		if(threadIdx.y < blockDim.y-1) 
-		{
-			//the horizontal border corresponds to the last row of the tile (exclude bottom most row)
-			uint y = (tileY+1)*tileDim-1;	// Since tileY starts from 0 hence tileY+1
-			//offset of the element from the left most boundary of the tile
-			offset = threadIdx.x*tileDim + threadIdx.z;
-			uint x = tileX * tileDim + threadIdx.z;	// tileDim is same for both x and y directions.
-			
-			for( int i = 0; i < threadIterations; ++i) 
-			{
-				seg = tex2D( texSrc, x + 0.5f, y + 0.5f);
-
-				if(seg != 0) 
-				{		
-					//address of the element in the global space
-					int idx = x+y*pitch;
-					//perform the union operation on neigboring elements from other tiles that are to be merged with the processed tile
-					if(offset>0) unionF( (int *)gpu_labels, gpu_labels_uchar, seg, tex2D( texSrc, x-1+0.5f, y+1+0.5f), idx, idx-1+pitch, sChanged); // Bottom left pixel.
-					unionF( (int *)gpu_labels, gpu_labels_uchar, seg, tex2D( texSrc, x+0.5f, y+1+0.5f), idx, idx+pitch, sChanged);				 // Bottom middle pixel.
-					if(offset<nextTileDim-1) unionF( (int *)gpu_labels, gpu_labels_uchar, seg, tex2D( texSrc, x+1+0.5f, y+1+0.5f), idx, idx+1+pitch, sChanged);	// Bottom right pixel.
-										
-				}
-				
-				//set the processed element to the next in line on the same boundary (in case the threads are used for multiple elements on the boundary)
-				x += blockDim.z;
-				offset += blockDim.z;	
-			}
-		}
-		//process vertical borders between merged tiles (exclude the right most tiles)
-		if( threadIdx.x < blockDim.x - 1)
-		{
-			//the vertical border corresponds to the right most column of elements in the tile
-			uint x = (tileX)*tileDim-1;	
-			//offset of the element from the top most boundary of the tile
-			offset = threadIdx.y*tileDim + threadIdx.z; 
-			uint y = tileY * tileDim + threadIdx.z ;
-
-			for(int i = 0; i < threadIterations; ++i)
-			{
-				seg = tex2D( texSrc, x+0.5f, y+0.5f);
-
-				if(seg != 0)
-				{
-					int idx = x+y*pitch;
-					//perform the union operation on neigboring elements from other tiles that are to be merged with the processed tile
-					if(offset>0) unionF( (int *)gpu_labels, gpu_labels_uchar, seg, tex2D( texSrc, x+1+0.5f, y-1+0.5f), idx, idx+1-pitch, sChanged);
-					unionF( (int *)gpu_labels, gpu_labels_uchar, seg, tex2D( texSrc, x+1+0.5f, y+0.5f), idx, idx+1, sChanged);
-					if(offset<nextTileDim-1) unionF( (int *)gpu_labels, gpu_labels_uchar,seg, tex2D( texSrc, x+1+0.5f, y+1+0.5f), idx, idx+1+pitch, sChanged);	
-				}
-				// If no. of threads are insufficient then following code will provide initials.
-				y += blockDim.z;
-				offset += blockDim.z;	
-			}
-
-		}
-		__syncthreads();
-		//if no equivalence tree was updated then all equivalence trees of the merged tiles are already merged
-		if(sChanged[0] == 0) 		
-			break;	
-		//need to synchronize here because the sChanged variable is changed next
-		__syncthreads();		
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*											     Flattening of Trees after Merging 														   */
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline __device__
-void flattenEquivalenceTreesInternal(int x, int y, int* gpu_labels_in, int* gpu_labels_out, unsigned char *gpu_labels_uchar, uint pitch, const int dataWidth);
-
-__global__ void flattenTreesAfterMergingKernel( int *gpu_labels_in, int *gpu_labels_out, unsigned char *gpu_labels_uchar, int tileDim, int blocksPerTile)
-{
-	//multiple thread blocks can be used to update border of a single tile
-	int tileX = blockIdx.x / blocksPerTile;
-	int tileOffset = blockDim.x*(blockIdx.x & (blocksPerTile-1));
-	int tileY = threadIdx.y + (blockIdx.y*blockDim.y);
-	int maxTileY = gridDim.y*blockDim.y-1;	
-	
-	//a single thread is used to update both the horizontal and the verical boundary on both sides of two merged tiles	
-
-	//first process horizontal borders
-	if(tileY < maxTileY) {		
-		uint y = (tileY+1)*tileDim-1;	
-		uint x = tileX*tileDim+threadIdx.x+tileOffset;			
-		flattenEquivalenceTreesInternal(x, y, gpu_labels_out, gpu_labels_in, gpu_labels_uchar, 240, 240);
-		flattenEquivalenceTreesInternal(x, y+1, gpu_labels_out, gpu_labels_in, gpu_labels_uchar, 240, 240);
-	}
-	//process vertical borders
-	if(tileX < gridDim.x-1) {		
-		uint x = (tileX+1)*tileDim-1;		
-		uint y = tileY*tileDim+threadIdx.x+tileOffset;
-		flattenEquivalenceTreesInternal(x, y, gpu_labels_out, gpu_labels_in, gpu_labels_uchar, 240, 240);
-		flattenEquivalenceTreesInternal(x+1, y, gpu_labels_out, gpu_labels_in, gpu_labels_uchar, 240, 240);
-						
-	}	
-
-
-
-}
-
-
-void flattenTreesAfterMerging( int *gpu_labels_in, int *gpu_labels_out, unsigned char *gpu_labels_char, int threadsX, int threadsY, int imageW, int imageH, int dataWidth, int tileSize)
-{
-	dim3 block, grid;
-	int blocksPerTile;
-
-	//////////////////////////////////////
-	int tileX = imageW / tileSize;
-	int tileY = imageH / tileSize;
-	int maxThreads = threadsX*threadsY;
-	if(tileY < threadsY) {
-		threadsY = tileY;
-		threadsX = maxThreads/threadsY;
-	}
-	if(threadsX > tileSize) threadsX = tileSize;
-	block = dim3(threadsX, threadsY, 1);	
-    grid = dim3(imageW / block.x,	(tileY) / block.y, 1);
-	blocksPerTile = tileSize / block.x;	
-	///////////////////////////////////////
-
-	flattenTreesAfterMergingKernel<<< block, grid>>>( gpu_labels_in, gpu_labels_out, gpu_labels_char, tileSize, blocksPerTile);
-
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*													Flattening of all the elements															*/
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -412,6 +252,7 @@ void flattenEquivalenceTreesInternal(int x, int y, int* gpu_labels_in, int* gpu_
 		{		
 			//set the label of the root element as the label of the processed element			
 			gpu_labels_out[index] = newLabel;
+			gpu_labels_uchar[index] = (unsigned char)newLabel;
 		}
 	}		
 }
@@ -422,11 +263,117 @@ __global__ void flattenEquivalenceTreesKernel(int* gpu_labels_out, int* gpu_labe
 	uint x = (blockIdx.x*blockDim.x)+threadIdx.x;
     uint y = (blockIdx.y*blockDim.y)+threadIdx.y;  
 
-   	flattenEquivalenceTreesInternal(x, y, gpu_labels_out, gpu_labels_in, gpu_labels_uchar, pitch, dataWidth);
+    uint index = x+y*pitch;
+    uint label = gpu_labels_in[index];
+
+	uint newLabel;
+
+	if((label != -1) && (label != index))
+	{
+		newLabel = findRoot( gpu_labels_in, label);
+
+		gpu_labels_out[index] = newLabel;
+		gpu_labels_uchar[index] = newLabel;
+
+	}
 
 }
 
-/////////////////////////////////////////////////// Main Wrapper about the function //////////////////////////////////////////////////////////
+void flattenTrees( int *gpu_labels, unsigned char *gpu_labels_uchar, int threadsX, int threadsY, int imageW, int imageH)
+{
+	
+	dim3 block(threadsX, threadsY, 1);
+    dim3 grid(imageW / block.x, imageH / block.y, 1);
+
+    flattenEquivalenceTreesKernel<<<grid, block>>>( gpu_labels, gpu_labels, gpu_labels_uchar, 240, 240);
+
+
+
+}
+
+/////////////////////////////////////////////// Merge Borders ////////////////////////////////////////////////////////////////////////
+
+__global__ void merge( int *gpu_labels, unsigned char *gpu_labels_uchar, int tileDim, const int pitch)
+{
+
+	int xT = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int yT = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	__shared__ int sChanged[1];
+
+
+	// horizontal bottom border
+
+	uint 	  x = (xT) * tileDim + threadIdx.z;
+	int offset = (threadIdx.x * tileDim) + threadIdx.z;
+	uint 	  y = ((yT+1) * tileDim)-1;
+	int 	idx = x + y * pitch;
+		
+	unsigned char seg = tex2D(texSrc, x, y);
+
+	while(!NULL)
+	{
+
+		if(threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0)
+		{
+			sChanged[0] = 0;			
+		}
+		__syncthreads();
+
+		
+		if( seg != 0)
+		{
+			if(offset > 0) unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x-1,y+1), idx, idx+pitch-1, sChanged);
+			unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x,y+1), idx, idx+pitch, sChanged);
+			if(offset < (blockDim.x*tileDim)) unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x+1,y+1), idx, idx+pitch+1, sChanged);
+		}
+
+		// vertical right border	
+
+			 x = ((xT+1)*tileDim)-1;
+			 y = (yT*tileDim) + threadIdx.z;
+		offset = (threadIdx.y * tileDim)+threadIdx.z;
+		   idx = x + y * pitch;
+		
+		seg = tex2D(texSrc, x, y);
+
+		if( seg != 0)
+		{
+		if( offset > 0 ) unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x+1,y-1), idx, idx-pitch+1, sChanged);
+			unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x+1,y), idx, idx+1, sChanged);
+			if(offset < (blockDim.y*tileDim)) unionF( gpu_labels, gpu_labels_uchar, seg, tex2D(texSrc,x+1,y+1), idx, idx+pitch+1, sChanged);
+		}
+
+		__syncthreads();
+		
+		if(sChanged[0] == 0) 		
+			break;	
+		
+		__syncthreads();
+	}
+	
+
+}
+
+void mergeBorders( int *gpu_labels, unsigned char *gpu_labels_uchar, int threadX, int threadY, int imageW, int imageH)
+{
+
+	int xTiles = 4;
+	int yTiles = 4;
+	int threadsPerBlock = 20;
+	int tileSize = 20;
+
+	dim3 block(4,4,20);
+	dim3 grid(imageW/(block.x*block.z), imageH/(block.y*block.z));
+
+	merge<<<grid,block>>>( gpu_labels, gpu_labels_uchar, tileSize, 240);	// FIXME: Try changing this value to 240*sizeof(int)
+	
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*                 									Main Wrapper about the function   								  				  */
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float gpu_DetectBlob( unsigned char *in, unsigned char *labels)
 {
 	int   imageW = 240;
@@ -459,9 +406,7 @@ float gpu_DetectBlob( unsigned char *in, unsigned char *labels)
     dim3 threads(20,20);
     int tileSize = 20; // It is used in merging phase of borders.
     dim3 blocks(12,16);
-  // dim3 threads(40,40);	// Timing was too less with this much threads. FIXME: Try this approach after conversion
-  // int tileSize = 40; // It is used in merging phase of borders.
-  // dim3 blocks(6,8);
+
     int labelSize = (threads.x + 2) * (threads.y + 2) * sizeof(int); //This is the size for storage of labels to the corresponding pixels
     int   segSize = (threads.x + 2) * (threads.y + 2) * sizeof(int); //This is the size of storage for segments.
     
@@ -476,48 +421,18 @@ float gpu_DetectBlob( unsigned char *in, unsigned char *labels)
     cudaMallocArray(&src, &floatTex, imageW, imageH);
     cudaMemcpyToArray(src, 0, 0, gpu_in, imageW * imageH, cudaMemcpyDeviceToDevice);
     cudaBindTextureToArray(texSrc, src);
-   // The reason for using texture memopory is that no coalascing can occur in global memory for memory access on borders
+  
 
-    while(tileSize < imageW || tileSize < imageH)
-    {
-    	//computing the number of tiles that are going to be merged in a singe thread block
-    	int xTiles = 4;
-		int yTiles = 4;
-		if(xTiles*tileSize > imageW) xTiles = imageW / tileSize;	// These are the fallback assignments when the tiles will be merged incremently.
-		if(yTiles*tileSize > imageH) yTiles = imageH / tileSize;
-
-		int threadsPerBlock = 40;	// FIXME: This value will cause problems.
-		if(tileSize < threadsPerBlock) threadsPerBlock = tileSize;
-		// In the first iteration value of threadsPerBlock is 20.
-
-		dim3 block(xTiles,yTiles,threadsPerBlock);
-		dim3 grid(imageW/(block.x*tileSize), imageH/(block.x*tileSize), 1);
-
-		mergeBlobAtBorders<<< grid, block>>>( gpu_labels, gpu_labels_uchar, tileSize, 240 );
-
-		if(yTiles > xTiles) tileSize = yTiles * tileSize;
-		else tileSize = xTiles * tileSize;
-
-		
-		if(tileSize < imageW || tileSize < imageH)
-		{
-			//update borders
-			flattenTreesAfterMerging( gpu_labels, gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH, 240 * sizeof(int), tileSize);
-		}
-		
-    }
+	mergeBorders( gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH);
+ 
     cudaUnbindTexture(texSrc);
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 	//////////////////////////////////////// Updating all the labels (i.e flattening )/////////////////////////////////////////////////
-	/*
-	dim3 block(threadsX, threadsY, 1);
-    dim3 grid(imageW / block.x, imageH / block.y, 1);
 
-    flattenEquivalenceTreesKernel<<<grid, block>>>( gpu_labels, gpu_labels, gpu_labels_uchar, 240, 240);
-	*/
-	
+
+	flattenTrees( gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH);
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	cudaEventRecord(stop,0);
@@ -534,7 +449,7 @@ float gpu_DetectBlob( unsigned char *in, unsigned char *labels)
 	cudaFree(gpu_labels_uchar);
     
     FILE *file;
-	file = fopen("debug.txt","a+"); // apend file (add text to a file or create a file if it does not exist.
+	file = fopen("debug_2.txt","a+"); // apend file (add text to a file or create a file if it does not exist.
 	for(int i=0;i<240*320;i++)
 	{
 		if((i>239) && (i%240==0))
