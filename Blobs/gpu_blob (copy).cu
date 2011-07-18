@@ -529,7 +529,9 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
     centroid = (int *)malloc((*nRegions)*2*sizeof(int));
 
 	/********************************************************** Calculating Centroid *******************************************************/
-	
+	cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<int>();
+	size_t offset;
+	cudaBindTexture2D(&offset, &texSrc, gpu_labels, &channelDesc, imageW, imageH,240);
 	calcCentroid( gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH, gpu_nRegions, gpu_regionOff, gpu_regionSize, gpu_centroid);
 	err = checkCudaError();
 	if( err != GPU_OK)
@@ -543,9 +545,9 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	cudaEventDestroy(stop);
 	
 	cudaMemcpy( regionSize, gpu_regionSize, (*nRegions)*sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpy( centroid, gpu_centroid, (*nRegions)*2*sizeof(int), cudaMemcpyDeviceToHost);	
-	/* In Order to find a centroid just divide centroid[i] and centroid[i+1] with regionSize[i] to get X and Y respectively. */
+	cudaMemcpy( centroid, gpu_centroid, (*nRegions)*2*sizeof(int), cudaMemcpyDeviceToHost);
 	
+	/* In Order to find a centroid just divide centroid[i] and centroid[i+1] with regionSize[i] to get X and Y respectively. */
 	cudaMemcpy( ctx->output_buffer_1, gpu_labels_uchar, imageW*imageH, cudaMemcpyDeviceToHost);
 	err = checkCudaError();
 	if( err != GPU_OK)

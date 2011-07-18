@@ -175,7 +175,7 @@ int main( int argc, char** argv )
 		cvShowImage( "Threshold", new_frame_4 );
 
 		/////////////////////// GPU Blob Detection /////////////////////////////
-/*
+
 		if( gpu_DetectBlob(ctx) != GPU_OK)
 		{
 			GPU_ERROR("Unable to detect blobs");
@@ -191,7 +191,7 @@ int main( int argc, char** argv )
 		cvShowImage( "Blobs", new_frame_5 );
 
 
-*/
+
 		/////////////////////////////////////////// //////////////////////////
 
 		
