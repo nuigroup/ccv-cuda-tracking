@@ -1,0 +1,80 @@
+﻿Build started 8/10/2011 4:47:06 PM.
+     1>Project "F:\CudaCCv2\CudaCCV\CudaCCV\CudaCCV.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Release\CudaCCV.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       AddCudaCompileDeps:
+         C:\Program Files\Microsoft Visual Studio 9.0\VC\bin\cl.exe /E /nologo /showIncludes /TP /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\bin" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include" /I. /FIcuda_runtime.h /c F:\CudaCCv2\CudaCCV\CudaCCV\Blobs\gpu_blob.cu 
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       AddCudaCompileDeps:
+       Skipping target "AddCudaCompileDeps" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+         Compiling CUDA source file Blobs\gpu_blob.cu...
+         cmd.exe /C "C:\Users\Remal\AppData\Local\Temp\8b7e934cac544017859d52330540233e.cmd"
+         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\bin\nvcc.exe" -gencode=arch=compute_13,code=\"sm_13,compute_13\" --use-local-env --cl-version 2008 -ccbin "C:\Program Files\Microsoft Visual Studio 9.0\VC\bin"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include"    --keep-dir "Release" -maxrregcount=32  --machine 32 --compile      -Xcompiler "/EHsc /nologo /Od /Zi  /MD " -o "Release\gpu_blob.cu.obj" "F:\CudaCCv2\CudaCCV\CudaCCV\Blobs\gpu_blob.cu"
+         
+         gpu_blob.cu
+         F:\CudaCCv2\CudaCCV\CudaCCV>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\bin\nvcc.exe" -gencode=arch=compute_13,code=\"sm_13,compute_13\" --use-local-env --cl-version 2008 -ccbin "C:\Program Files\Microsoft Visual Studio 9.0\VC\bin"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\include"    --keep-dir "Release" -maxrregcount=32  --machine 32 --compile      -Xcompiler "/EHsc /nologo /Od /Zi  /MD " -o "Release\gpu_blob.cu.obj" "F:\CudaCCv2\CudaCCV\CudaCCV\Blobs\gpu_blob.cu" 
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(267): warning : variable "offset" was declared but never referenced
+         
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(385): warning : integer conversion resulted in a change of sign
+         
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(464): warning : variable "shSize_Offset" was declared but never referenced
+         
+         tmpxft_000017c8_00000000-0_gpu_blob.cudafe1.gpu
+         tmpxft_000017c8_00000000-5_gpu_blob.cudafe2.gpu
+         gpu_blob.cu
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(267): warning : variable "offset" was declared but never referenced
+         
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(385): warning : integer conversion resulted in a change of sign
+         
+     1>F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(464): warning : variable "shSize_Offset" was declared but never referenced
+         
+         F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(323): Advisory: Loop was not unrolled, unexpected call OPs
+         F:/CudaCCv2/CudaCCV/CudaCCV/Blobs/gpu_blob.cu(347): Advisory: Loop was not unrolled, unexpected call OPs
+         tmpxft_000017c8_00000000-0_gpu_blob.cudafe1.cpp
+         tmpxft_000017c8_00000000-11_gpu_blob.ii
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       CudaBuild:
+       Skipping target "CudaBuild" because all output files are up-to-date with respect to the input files.
+       ClCompile:
+         All outputs are up-to-date.
+       Link:
+         C:\Program Files\Microsoft Visual Studio 9.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"F:\CudaCCv2\CudaCCV\Release\CudaCCV.exe" /NOLOGO /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v3.2\lib\Win32" cudart.lib C:\OpenCV2.2\lib\opencv_core220d.lib C:\OpenCV2.2\lib\opencv_highgui220d.lib C:\OpenCV2.2\lib\opencv_video220d.lib C:\OpenCV2.2\lib\opencv_ml220d.lib C:\OpenCV2.2\lib\opencv_legacy220d.lib C:\OpenCV2.2\lib\opencv_imgproc220d.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Release\CudaCCV.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"F:\CudaCCv2\CudaCCV\Release\CudaCCV.pdb" /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"F:\CudaCCv2\CudaCCV\Release\CudaCCV.lib" /MACHINE:X86 Release\gpu_amplify.cu.obj
+         Release\api.cu.obj
+         Release\gpu_sub.cu.obj
+         Release\gpu_blob.cu.obj
+         Release\gpu_blur_tex.cu.obj
+         Release\gpu_grayscale.cu.obj
+         Release\gpu_threshold.cu.obj
+         Release\main.obj
+         Generating code
+         Finished generating code
+         CudaCCV.vcxproj -> F:\CudaCCv2\CudaCCV\Release\CudaCCV.exe
+       Manifest:
+         C:\Program Files\Microsoft SDKs\Windows\v6.0A\bin\mt.exe /nologo /verbose /outputresource:"F:\CudaCCv2\CudaCCV\Release\CudaCCV.exe;#1" /manifest Release\CudaCCV.exe.intermediate.manifest
+       FinalizeBuildStatus:
+         Deleting file "Release\CudaCCV.unsuccessfulbuild".
+         Touching "Release\CudaCCV.lastbuildstate".
+     1>Done Building Project "F:\CudaCCv2\CudaCCV\CudaCCV\CudaCCV.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:05.35
