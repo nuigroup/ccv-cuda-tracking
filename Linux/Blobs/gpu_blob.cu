@@ -1,9 +1,26 @@
+/*
+// This source file contains the Cuda Code for Blob Detection of a source Image.
+// It is a part of Cuda Image Processing Library .
+// Copyright (C) 2011 Remaldeep Singh
+
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+
+
 /*	
-	
-	each block will be of dimension 15 x 16.
-
-	(20,20)
-
 	In the shared memory the labelSharedMemory contains the index value of the pixel as root. Labelling is done by storing value of indices at the pixels.
 	The index value stored is the one that is minimum from its neighbouring 8 pixels.
 							
@@ -22,26 +39,11 @@
 
 	The best way to do labelling is using disjoint set datasctructure(Union Find DS).
 	See Wikipidea
-*/
-/*
-		Dont Use __mul24 for devices with compute capability >= 2.0.
-		Hence define the apropriate flags accordingly.
-
-		Read about volatile memory....
-
-		The gpu_labels_uchar is only for debugging. Remove it when you are done.
-
+	Dont Use __mul24 for devices with compute capability >= 2.0.
+	Hence define the apropriate flags accordingly.
+	The gpu_labels_uchar is only for debugging. Remove it when you are done.
 */
 
-/*
-*
-*
-*
-*			DONT FORGET TO USE CUDATHREADSYNCHNIZE()
-*
-*
-*
-*/
 
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -58,7 +60,7 @@ inline __device__ int findRoot(int* buf, int x)
     return x;    
 }
 
-inline __device__ void unionF(int* buf, unsigned char *buf_uchar, unsigned char seg1, unsigned char seg2, int reg1, int reg2, int* changed)
+inline __device__ void unionTrees(int* buf, unsigned char *buf_uchar, unsigned char seg1, unsigned char seg2, int reg1, int reg2, int* changed)
 {
 	if(seg1 == seg2) 
 	{			
@@ -152,7 +154,7 @@ __global__ void localLabelling( unsigned char *gpu_in, int *gpu_labels, unsigned
 	//pixel = tex2D( texSrc, x, y);  // This is with usage of textures.
 	pixel = gpu_in[ offset ];	// This is with global memory call.
 	
-	sMem[segLocalIndex] = (int)pixel;// This step will load the segmentation shared memory with all the required pixels
+	sMem[segLocalIndex] = (int)pixel;	// This step will load the segmentation shared memory with all the required pixels
 	__syncthreads();
 
 	//store data about segments into registers so that we don't have to access shared memory
@@ -205,8 +207,10 @@ __global__ void localLabelling( unsigned char *gpu_in, int *gpu_labels, unsigned
 			//(the tree is always flattened in this stage so there is no need to use findRoot to find the root)	
 			//VVVVIMP: This step is like merging of two trees together.				
             //Be carefull when removing this function. Atomic is used to prevent multiple threads from accessing same memory.
-			//It is like a particualar thread has acquired a lock on the address.			
+			//It is like a particualar thread has acquired a lock on the address.	
+					
 			atomicMin(sMem+oldLabel, newLabel); 
+
 			//sMem[localIndex] = newLabel;
 			//sMem[oldLabel] = min( sMem[oldLabel], newLabel);
 			
@@ -245,6 +249,7 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 
 void mergeBorders( int *gpu_labels, unsigned char *gpu_labels_uchar, int threadsX, int threadsY, int imageW, int imageH)
 {
+
 /*
 	int xTiles = 4;
 	int yTiles = 4;
@@ -279,11 +284,7 @@ void mergeBorders( int *gpu_labels, unsigned char *gpu_labels_uchar, int threads
 //fprintf(stderr,"I was here %d %d %d %dx %dy \n", tileSize, grid.x, grid.y, xTiles, yTiles);
 		if(yTiles > xTiles) tileSize = yTiles * tileSize;
 		else tileSize = xTiles * tileSize;
-
-		//if(tileSize < imgWidth || tileSize < imgHeight) {
-			//update borders (KERNEL 3)
-			//cclFlattenEquivalenceTreesAfterMergingTiles(inOutLabelsBuf, inOutLabelsBuf, threadsX, threadsX, imgWidth, imgHeight, dataWidth, log2DataWidth, tileSize);
-		//}
+				
 	}
 
 }
@@ -314,10 +315,10 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 		//first process horizontal borders that are between merged tiles (so exclude tiles from the last row)
 		if(threadIdx.y < blockDim.y-1) {
 			//the horizontal border corresponds to the last row of the tile
-			uint y = (tileY+1)*tileDim-1;	
+			unsigned int y = (tileY+1)*tileDim-1;	
 			//offset of the element from the left most boundary of the tile
 			offset = threadIdx.x*tileDim + threadIdx.z;
-			uint x = tileX*tileDim + threadIdx.z;
+			unsigned int x = tileX*tileDim + threadIdx.z;
 #pragma	unroll			
 			for(int i=0;i<threadIterations;++i) {					
 				//load the segment data for the element
@@ -325,10 +326,10 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 				if(seg != 0) {		
 					//address of the element in the global space
 					int idx = x+y*pitch;				
-					//perform the union operation on neigboring elements from other tiles that are to be merged with the processed tile
-					if(offset>0) unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x-1, y+1), idx, idx-1+pitch, sChanged);
-					unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x, y+1), idx, idx+pitch, sChanged);
-					if(offset<nextTileDim-1) unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y+1), idx, idx+1+pitch, sChanged);
+					//perform the unionTrees operation on neigboring elements from other tiles that are to be merged with the processed tile
+					if(offset>0) unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x-1, y+1), idx, idx-1+pitch, sChanged);
+					unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x, y+1), idx, idx+pitch, sChanged);
+					if(offset<nextTileDim-1) unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y+1), idx, idx+1+pitch, sChanged);
 					
 				}
 				//set the processed element to the next in line on the same boundary (in case the threads are used for multiple elements on the boundary)
@@ -339,9 +340,9 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 		// vertical right borders
 		if(threadIdx.x < blockDim.x-1) 
 		{
-			uint x = (tileX+1)*tileDim-1;		
+			unsigned int x = (tileX+1)*tileDim-1;		
 			offset = threadIdx.y*tileDim + threadIdx.z;
-			uint y = tileY*tileDim+threadIdx.z;
+			unsigned int y = tileY*tileDim+threadIdx.z;
 #pragma unroll
 			for(int i=0;i<threadIterations;++i) 
 			{			
@@ -349,10 +350,10 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 				if(seg != 0) 
 				{
 					int idx = x+y*pitch;
-					//perform the union operation on neigboring elements from other tiles that are to be merged with the processed tile
-					if(offset>0) unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y-1), idx, idx+1-pitch, sChanged);
-					unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y), idx, idx+1, sChanged);
-					if(offset<nextTileDim-1) unionF(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y+1), idx, idx+1+pitch, sChanged);			
+					//perform the unionTrees operation on neigboring elements from other tiles that are to be merged with the processed tile
+					if(offset>0) unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y-1), idx, idx+1-pitch, sChanged);
+					unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y), idx, idx+1, sChanged);
+					if(offset<nextTileDim-1) unionTrees(dLabelsInOut, gpu_labels_uchar, seg, tex2D(texSrc, x+1, y+1), idx, idx+1+pitch, sChanged);			
 				}	
 				y += blockDim.z;
 				offset += blockDim.z;
@@ -366,23 +367,20 @@ __global__ void mergeEquivalenceTreesOnBordersKernel( int* dLabelsInOut, unsigne
 		__syncthreads();
 	}	
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*													Flattening of all the elements															*/
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-__global__ void flattenEquivalenceTreesKernel(int* gpu_labels_out, int* gpu_labels_in, unsigned char *gpu_labels_uchar, uint pitch, const int dataWidth, int *gpu_nRegions)												
+__global__ void flattenEquivalenceTreesKernel(int* gpu_labels_out, int* gpu_labels_in, unsigned char *gpu_labels_uchar, unsigned int pitch, const int dataWidth, int *gpu_nRegions)												
 {
-	uint     x = (blockIdx.x*blockDim.x)+threadIdx.x;
-    uint     y = (blockIdx.y*blockDim.y)+threadIdx.y;  
-    uint index = x+y*pitch;
-    uint label = gpu_labels_in[index];
+	unsigned int     x = (blockIdx.x*blockDim.x)+threadIdx.x;
+    unsigned int     y = (blockIdx.y*blockDim.y)+threadIdx.y;  
+    unsigned int index = x+y*pitch;
+    unsigned int label = gpu_labels_in[index];
 
-	uint newLabel;
+	unsigned int newLabel;
 
 	if((label != -1) && (label != index))
 	{
@@ -454,16 +452,67 @@ __global__ void calcCentroidKernel( int *gpu_labels, int *gpu_nRegions, int *gpu
 
 }
 
-void calcCentroid( int *gpu_labels, unsigned char *gpu_labels_uchar, int threadsX, int threadsY, int imageW, int imageH, int *gpu_nRegions, int *gpu_regionOff, int *gpu_regionSize, int *gpu_centroid)
+__global__ void calcCentroidSharedKernel(int *gpu_labels,int *gpu_nRegions,int *gpu_regionOff,int *gpu_regionsSize,int *gpu_centroid,int *i,int pitch)
+{
+
+	extern __shared__ int sMem[];
+
+	int     			x = (blockIdx.x*blockDim.x)+threadIdx.x;
+    int     			y = (blockIdx.y*blockDim.y)+threadIdx.y;  
+    int 			index = x+y*pitch;
+    int 				j = 0; 
+    int 	shSize_Offset = 0;
+    int shCentroid_Offset = *gpu_nRegions;
+
+	if((index >= 0) && (index < (3*(*gpu_nRegions))))
+		sMem[index] = 0;
+    
+    if( gpu_labels[index] == index)
+    {
+		atomicAdd( i, 1);
+		atomicAdd( gpu_regionOff + (*i), index);
+    }
+	__syncthreads();
+	
+    for( j=0; j < *gpu_nRegions; j++)
+	{
+			if( gpu_labels[index] == gpu_regionOff[j])
+			{
+						atomicAdd( sMem+shCentroid_Offset+(2*j), x);
+						atomicAdd( sMem+shCentroid_Offset+(2*j)+1, y);
+						atomicAdd( sMem+j, 1);
+			}
+	}
+	__syncthreads();
+
+	if((threadIdx.x == 0) && (threadIdx.y == 0))
+	{
+		atomicAdd(gpu_centroid+(2*j), sMem[shCentroid_Offset+(2*j)]);
+		atomicAdd(gpu_centroid+(2*j)+1, sMem[shCentroid_Offset+(2*j)+1]);
+		atomicAdd(gpu_regionsSize+j, sMem[j]);
+	}
+
+}
+
+		// nRegions was added later delete it..............
+
+void calcCentroid( int *gpu_labels, unsigned char *gpu_labels_uchar, int threadsX, int threadsY, int imageW, int imageH, int nRegions, int *gpu_nRegions, int *gpu_regionOff, int *gpu_regionSize, int *gpu_centroid)
 {
 	int *i;
 	cudaMalloc( (void **)&i, sizeof(int));
 	cudaMemset( i, -1, sizeof(int));
-	dim3 block( threadsX, threadsY, 1);
+	int shSize = (nRegions)*4*sizeof(int);
+	dim3 block( 15, 16, 1);
 	dim3 grid( imageW / block.x, imageH / block.y, 1);
 
 	calcCentroidKernel<<<grid,block>>>( gpu_labels, gpu_nRegions, gpu_regionOff, gpu_regionSize, gpu_centroid, i, imageW);
+	
 
+/*	if(shSize != 0)
+	{
+		calcCentroidSharedKernel<<<grid,block,shSize>>>(gpu_labels,gpu_nRegions,gpu_regionOff,gpu_regionSize,gpu_centroid,i,imageW);
+	}
+*/
 }	
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +566,7 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
    
     cudaEventRecord(start,0);
 
-    /*********************************************** Local Shared Labelling ************************************************/
+    /******************************************* Local Shared Labelling ****************************************************/
     dim3 threads(threadsX,threadsY);
     dim3 blocks( imageW/threadsX, imageH/threadsY);
 
@@ -529,7 +578,7 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	err = checkCudaError();
 	if( err != GPU_OK)
 		return err;
-	//cudaThreadSynchronize();
+	/***********************************************************************************************************************/
 
 	
 	/******************************************* Merging Blobs Together ****************************************************/
@@ -545,7 +594,7 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	err = checkCudaError();
 	if( err != GPU_OK)
 		return err;
-	//cudaThreadSynchronize();
+ 
     cudaUnbindTexture(texSrc);
 
 
@@ -556,7 +605,7 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	err = checkCudaError();
 	if( err != GPU_OK)
 		return err;
-/*	cudaThreadSynchronize();
+
 
 	int *gpu_regionOff, *gpu_regionSize, *gpu_centroid;
 	cudaMalloc( (void **)&gpu_regionOff, (*nRegions)*sizeof(int));
@@ -567,28 +616,29 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	cudaMemset( gpu_centroid, -1, (*nRegions)*2*sizeof(int));
 	regionSize = (int *)malloc((*nRegions)*sizeof(int));
     centroid = (int *)malloc((*nRegions)*2*sizeof(int));
-*/
+
 	/********************************************************** Calculating Centroid *******************************************************/
-	/*
-	calcCentroid( gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH, gpu_nRegions, gpu_regionOff, gpu_regionSize, gpu_centroid);
+
+	calcCentroid( gpu_labels, gpu_labels_uchar, threadsX, threadsY, imageW, imageH, *nRegions, gpu_nRegions, gpu_regionOff, gpu_regionSize, gpu_centroid);
 	err = checkCudaError();
 	if( err != GPU_OK)
 		return err;
 
-*/
+
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedtime,start,stop);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
-	fprintf(stderr,"Blobs: %lf\n",elapsedtime);
+	fprintf(stderr,"Blobs: %lf\n\n",elapsedtime);
 
 	
-	//cudaMemcpy( regionSize, gpu_regionSize, (*nRegions)*sizeof(int), cudaMemcpyDeviceToHost);
-	//cudaMemcpy( centroid, gpu_centroid, (*nRegions)*2*sizeof(int), cudaMemcpyDeviceToHost);	
+	cudaMemcpy( regionSize, gpu_regionSize, (*nRegions)*sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpy( centroid, gpu_centroid, (*nRegions)*2*sizeof(int), cudaMemcpyDeviceToHost);	
 	// In Order to find a centroid just divide centroid[i] and centroid[i+1] with regionSize[i] to get X and Y respectively. 
 	
 	cudaMemcpy( ctx->output_buffer_1, gpu_labels_uchar, imageW*imageH, cudaMemcpyDeviceToHost);
+	cudaMemcpy( labels_int, gpu_labels, imageW*imageH*sizeof(int), cudaMemcpyDeviceToHost);
 	err = checkCudaError();
 	if( err != GPU_OK)
 		return err;
@@ -596,7 +646,7 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 	cudaFree(gpu_labels);
 	cudaFree(gpu_labels_uchar);
 
-	// Rest of the code is just for debugging. Remove it for measuring performance. //
+	// Rest of the code is just for debugging. Remove it after measuring performance. //
 /*
 	FILE *file;
 	file = fopen("debug_1.txt","a+"); // apend file (add text to a file or create a file if it does not exist.
@@ -612,16 +662,14 @@ gpu_error_t gpu_DetectBlob( gpu_context_t *ctx)
 
 	FILE *file;
 	file = fopen("regions.txt","a+"); // apend file (add text to a file or create a file if it does not exist.
-	fprintf(file,"%d %f", *nRegions, elapsedtime);
-	 /*
+	fprintf(file,"%d %f ", *nRegions, elapsedtime);
+	
 	for(int i=0;i<(*nRegions);i++)
 	{
-		double t1 = centroid[2*i]/regionSize[i];
-		double t2 = centroid[(2*i)+1]/regionSize[i];
-		fprintf(file,"%f ", t1);
-		fprintf(file,"%f ", t2);
+		fprintf(file," %d %d ", centroid[2*i],centroid[2*i]+1);
+		fprintf(file,"%d ", regionSize[i]);
 	}
-*/
+
 	fprintf(file,"\n");
 	fclose(file); //done!
 

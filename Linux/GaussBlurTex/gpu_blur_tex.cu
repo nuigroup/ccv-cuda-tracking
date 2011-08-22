@@ -7,7 +7,7 @@
 #include "cuda_runtime.h"
 #include "assert.h"
 #include "stdio.h"
-#include "sys/time.h"
+
 #define MAD(a, b, c) ( __mul24((a), (b)) + (c) )
 
 
@@ -108,18 +108,12 @@ gpu_error_t gpu_blur( gpu_context_t *ctx , int KERNEL_RADIUS)
 	assert(KERNEL_RADIUS);
 	gpu_error_t error = GPU_OK;
 
-	struct timeval startTime;
-    struct timeval endTime;
-  
-
 	float elapsedtime;
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 	cudaEventRecord(start,0);
 
-	gettimeofday(&startTime, NULL);
-	   
 	int KERNEL_LENGTH = (2 * KERNEL_RADIUS + 1);
 	const int imageW = ctx->width;
     const int imageH = ctx->height;
@@ -163,26 +157,22 @@ gpu_error_t gpu_blur( gpu_context_t *ctx , int KERNEL_RADIUS)
 
 	}
 
-gettimeofday(&endTime, NULL);
-double tS = startTime.tv_sec*1000000 + (startTime.tv_usec);
-double tE = endTime.tv_sec*1000000  + (endTime.tv_usec);
-	cudaEventRecord(stop,0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsedtime,start,stop);
-	cudaEventDestroy(start);
-	cudaEventDestroy(stop);
-   	cudaMemcpy(in, tempOutput, imageW * imageH, cudaMemcpyDeviceToHost);
+	cudaMemcpy(in, tempOutput, imageW * imageH, cudaMemcpyDeviceToHost);
 	cudaMemcpy( ctx->gpu_buffer_1, tempOutput, imageW * imageH, cudaMemcpyDeviceToDevice);	// This is needed so that next filter is able to use gpu_buffer_1
 	error = checkCudaError();
 
 	cudaFree(tempOutput);
 	cudaFreeArray(src);
 
-	
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedtime,start,stop);
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
 	
 	//FILE *file;
 	//file = fopen("../timing.txt","a+");
-	fprintf(stderr,"Smoothing:%lf \n",(tE-tS)/1000);
+	fprintf(stderr,"Smoothing:%lf \n",elapsedtime);
 	//fclose(file);
 	
 	return error;

@@ -1,6 +1,21 @@
 /*
-	This programme contains only subtraction code for image. Background subtraction and 
-	highpass use this function for implemetation.
+// This source file contains the Cuda Code for subtraction of a source Image.
+// It is a part of Cuda Image Processing Library ).
+// Copyright (C) 2011 Remaldeep Singh
+
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "cuda.h"
@@ -49,29 +64,19 @@ gpu_error_t gpu_sub( gpu_context_t *ctx, unsigned char *staticBg)
 	dim3 threads( threadsX, threadsY);
 	dim3 blocks( temp1, temp2);
 	subtract<<< blocks, threads>>>( ctx->gpu_buffer_1, temp, ctx->width, ctx->height);
-	cudaThreadSynchronize();
+
 	/////////////////////////////////////////////////////////////////////////////
 	
-	/***************** There is somthing wrong here *******************************/
-	
-	if( cudaSuccess != cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost));
-	{
-	//	fprintf(stderr,"mem_cpy_error\n");
-		error = GPU_ERR_MEM;
-	}
-	
-	error = checkCudaError();	
-	if(error != GPU_OK)
-	{	fprintf(stderr,"mem_cpy_error\n");
-	}
-	/*******************************************************************************/
-	
+	if( cudaSuccess != cudaMemcpy( ctx->output_buffer_1, ctx->gpu_buffer_1, 240 * 320, cudaMemcpyDeviceToHost));
+		error = GPU_ERR_MEM;;
+	cudaFree(temp);
+
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedtime,start,stop);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
-	cudaFree(temp);
+
 	//FILE *file;
 	//file = fopen("../timing.txt","a+");
 	fprintf(stderr,"BgSubtract:%lf \n",elapsedtime);

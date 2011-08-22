@@ -1,3 +1,23 @@
+/*
+// This source file contains the Cuda Code for grayscale of a source Image.
+// It is a part of Cuda Image Processing Library .
+// Copyright (C) 2011 Remaldeep Singh
+
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include "assert.h"
 #include "stdio.h"
 #include "cuda_runtime.h"
@@ -45,7 +65,6 @@ gpu_error_t gpu_grayscale(gpu_context_t *ctx)
 
 	if( cudaSuccess != cudaMemcpy(ctx->output_buffer_1, ctx->gpu_buffer_1, ctx->width * ctx->height , cudaMemcpyDeviceToHost))
 		error = GPU_ERR_MEM;
-	cudaThreadSynchronize();
 
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
@@ -55,7 +74,7 @@ gpu_error_t gpu_grayscale(gpu_context_t *ctx)
 
 	//FILE *file;
 	//file = fopen("../timing.txt","a+");
-	fprintf(stderr,"Grayscale:%lf \n",elapsedtime);
+	fprintf(stderr,"\nGrayscale:%lf \n",elapsedtime);
 	//fclose(file);
 	
 	return error;

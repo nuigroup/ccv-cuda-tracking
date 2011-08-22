@@ -1,15 +1,21 @@
 /*
-	The idea behind this API is that, the application first will have to create a context of GPU which also includes a pointer	
-	to the buffer that will contain a copy the frame of camera. This buffer can be pinned or pageable depending upon the 
-	arguments passed to "host_flag". Gpu will create its own buffer and copy the contents of context buffer to it. Gpu context 
-	buffer resides on host memory.
+// This source file contains the API code various gpu methods provided by the library.
+// It is a part of Cuda Image Processing Library ).
+// Copyright (C) 2011 Remaldeep Singh
 
-	IPLimage(cannot be made pinned memory) -----> gpu_context_t buffer(can be made pinned) ----> Grayscale filter buffer(cudaMalloc).
-									|		
-									|	
-									|------------------------> Threshold filter buffer(cudaMalloc).
-	
-	The scenerio being used right now (the one we dicussed via google doc as shown above) is not using pinned memory.
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "assert.h"
